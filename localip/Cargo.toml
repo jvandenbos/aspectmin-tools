@@ -1,0 +1,7 @@
+[package]
+name = "localip"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+pnet_datalink = "0.35"
