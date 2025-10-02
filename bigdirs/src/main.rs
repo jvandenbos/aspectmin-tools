@@ -3,9 +3,14 @@ use std::env;
 use walkdir::WalkDir;
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    let json_mode = args.iter().any(|arg| arg == "--json" || arg == "-j");
+
     let current_dir = env::current_dir().expect("Failed to get current directory");
 
-    println!("Scanning directories in {}...\n", current_dir.display());
+    if !json_mode {
+        println!("Scanning directories in {}...\n", current_dir.display());
+    }
 
     let mut dir_sizes: HashMap<String, u64> = HashMap::new();
 
@@ -39,13 +44,32 @@ fn main() {
     let mut sorted_dirs: Vec<_> = dir_sizes.into_iter().collect();
     sorted_dirs.sort_by(|a, b| b.1.cmp(&a.1));
 
-    println!("{:>12} {}", "SIZE", "DIRECTORY");
-    println!("{}", "-".repeat(70));
+    if json_mode {
+        print!("[");
+        for (i, (dir, size)) in sorted_dirs.iter().take(10).enumerate() {
+            if i > 0 {
+                print!(",");
+            }
+            println!();
+            println!("  {{");
+            println!("    \"path\": \"{}\",", dir.replace("\"", "\\\""));
+            println!("    \"size_bytes\": {},", size);
+            println!("    \"size_human\": \"{}\"", format_bytes(*size));
+            print!("  }}");
+        }
+        if !sorted_dirs.is_empty() {
+            println!();
+        }
+        println!("]");
+    } else {
+        println!("{:>12} {}", "SIZE", "DIRECTORY");
+        println!("{}", "-".repeat(70));
 
-    for (dir, size) in sorted_dirs.iter().take(10) {
-        println!("{:>12} {}", format_bytes(*size), dir);
+        for (dir, size) in sorted_dirs.iter().take(10) {
+            println!("{:>12} {}", format_bytes(*size), dir);
+        }
+        println!();
     }
-    println!();
 }
 
 fn format_bytes(bytes: u64) -> String {

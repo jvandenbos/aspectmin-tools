@@ -5,14 +5,20 @@ use std::time::{Duration, Instant};
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    if args.len() != 3 {
-        eprintln!("Usage: portcheck <host> <port>");
+    let json_mode = args.iter().any(|arg| arg == "--json" || arg == "-j");
+    let args_without_flags: Vec<&String> = args.iter()
+        .filter(|arg| *arg != "--json" && *arg != "-j" && !arg.starts_with('-'))
+        .collect();
+
+    if args_without_flags.len() != 3 {
+        eprintln!("Usage: portcheck [--json] <host> <port>");
         eprintln!("Example: portcheck google.com 443");
+        eprintln!("         portcheck --json google.com 443");
         std::process::exit(1);
     }
 
-    let host = &args[1];
-    let port = &args[2];
+    let host = args_without_flags[1];
+    let port = args_without_flags[2];
 
     let address = format!("{}:{}", host, port);
 
@@ -31,15 +37,34 @@ fn main() {
         match TcpStream::connect_timeout(&socket_addr, Duration::from_secs(5)) {
             Ok(_) => {
                 let elapsed = start.elapsed();
-                println!("✓ Port {} on {} is OPEN ({}ms)",
-                         port, host, elapsed.as_millis());
+                if json_mode {
+                    println!("{{");
+                    println!("  \"host\": \"{}\",", host);
+                    println!("  \"port\": {},", port);
+                    println!("  \"status\": \"open\",");
+                    println!("  \"response_time_ms\": {}", elapsed.as_millis());
+                    println!("}}");
+                } else {
+                    println!("✓ Port {} on {} is OPEN ({}ms)",
+                             port, host, elapsed.as_millis());
+                }
                 return;
             }
             Err(e) => {
                 let elapsed = start.elapsed();
-                println!("✗ Port {} on {} is CLOSED ({}ms)",
-                         port, host, elapsed.as_millis());
-                println!("  Error: {}", e);
+                if json_mode {
+                    println!("{{");
+                    println!("  \"host\": \"{}\",", host);
+                    println!("  \"port\": {},", port);
+                    println!("  \"status\": \"closed\",");
+                    println!("  \"response_time_ms\": {},", elapsed.as_millis());
+                    println!("  \"error\": \"{}\"", e.to_string().replace("\"", "\\\""));
+                    println!("}}");
+                } else {
+                    println!("✗ Port {} on {} is CLOSED ({}ms)",
+                             port, host, elapsed.as_millis());
+                    println!("  Error: {}", e);
+                }
                 return;
             }
         }

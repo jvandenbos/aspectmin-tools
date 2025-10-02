@@ -1,11 +1,17 @@
+use std::env;
 use std::fs;
 use std::path::Path;
 use walkdir::WalkDir;
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    let json_mode = args.iter().any(|arg| arg == "--json" || arg == "-j");
+
     let apps_dir = "/Applications";
 
-    println!("Scanning applications in {}...\n", apps_dir);
+    if !json_mode {
+        println!("Scanning applications in {}...\n", apps_dir);
+    }
 
     let mut app_sizes: Vec<(String, u64)> = Vec::new();
 
@@ -29,13 +35,32 @@ fn main() {
     // Sort by size descending
     app_sizes.sort_by(|a, b| b.1.cmp(&a.1));
 
-    println!("{:>12} {}", "SIZE", "APPLICATION");
-    println!("{}", "-".repeat(70));
+    if json_mode {
+        print!("[");
+        for (i, (app_name, size)) in app_sizes.iter().take(20).enumerate() {
+            if i > 0 {
+                print!(",");
+            }
+            println!();
+            println!("  {{");
+            println!("    \"app\": \"{}\",", app_name.replace("\"", "\\\""));
+            println!("    \"size_bytes\": {},", size);
+            println!("    \"size_human\": \"{}\"", format_bytes(*size));
+            print!("  }}");
+        }
+        if !app_sizes.is_empty() {
+            println!();
+        }
+        println!("]");
+    } else {
+        println!("{:>12} {}", "SIZE", "APPLICATION");
+        println!("{}", "-".repeat(70));
 
-    for (app_name, size) in app_sizes.iter().take(20) {
-        println!("{:>12} {}", format_bytes(*size), app_name);
+        for (app_name, size) in app_sizes.iter().take(20) {
+            println!("{:>12} {}", format_bytes(*size), app_name);
+        }
+        println!();
     }
-    println!();
 }
 
 fn calculate_dir_size(path: &Path) -> u64 {
