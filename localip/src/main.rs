@@ -1,10 +1,12 @@
 use pnet_datalink;
+use std::env;
 
 fn main() {
-    println!("{:<20} {}", "INTERFACE", "IP ADDRESS");
-    println!("{}", "-".repeat(50));
+    let args: Vec<String> = env::args().collect();
+    let json_mode = args.iter().any(|arg| arg == "--json" || arg == "-j");
 
     let interfaces = pnet_datalink::interfaces();
+    let mut results = Vec::new();
 
     for interface in interfaces {
         // Skip loopback
@@ -27,8 +29,33 @@ fn main() {
                 }
             }
 
-            println!("{:<20} {}", interface.name, ip_addr);
+            results.push((interface.name.clone(), ip_addr.to_string()));
         }
     }
-    println!();
+
+    if json_mode {
+        print!("[");
+        for (i, (iface, ip)) in results.iter().enumerate() {
+            if i > 0 {
+                print!(",");
+            }
+            println!();
+            println!("  {{");
+            println!("    \"interface\": \"{}\",", iface);
+            println!("    \"ip\": \"{}\"", ip);
+            print!("  }}");
+        }
+        if !results.is_empty() {
+            println!();
+        }
+        println!("]");
+    } else {
+        println!("{:<20} {}", "INTERFACE", "IP ADDRESS");
+        println!("{}", "-".repeat(50));
+
+        for (iface, ip) in results {
+            println!("{:<20} {}", iface, ip);
+        }
+        println!();
+    }
 }
