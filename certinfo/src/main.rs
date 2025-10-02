@@ -73,20 +73,51 @@ fn show_cert_from_file(path: &str) {
 }
 
 fn parse_and_display_cert(data: &str) {
-    // Extract cert and pipe to openssl x509
-    let output = Command::new("sh")
-        .arg("-c")
-        .arg("echo \"\" | openssl s_client -connect $1:443 -servername $1 2>/dev/null | openssl x509 -noout -subject -issuer -dates")
-        .arg("sh")
-        .arg(data)
-        .output();
+    // Parse the certificate data from s_client output
+    // Look for the certificate section
+    if let Some(start) = data.find("-----BEGIN CERTIFICATE-----") {
+        if let Some(end) = data[start..].find("-----END CERTIFICATE-----") {
+            let cert_pem = &data[start..start + end + "-----END CERTIFICATE-----".len()];
 
-    match output {
-        Ok(output) => {
-            println!("{}", String::from_utf8_lossy(&output.stdout));
-        }
-        Err(e) => {
-            eprintln!("Error parsing certificate: {}", e);
+            // Use openssl to display cert info
+            let output = Command::new("openssl")
+                .arg("x509")
+                .arg("-noout")
+                .arg("-subject")
+                .arg("-issuer")
+                .arg("-dates")
+                .arg("-fingerprint")
+                .stdin(std::process::Stdio::piped())
+                .output();
+
+            match output {
+                Ok(mut child_output) => {
+                    // Write cert to stdin
+                    if let Ok(mut process) = Command::new("openssl")
+                        .arg("x509")
+                        .arg("-noout")
+                        .arg("-subject")
+                        .arg("-issuer")
+                        .arg("-dates")
+                        .arg("-fingerprint")
+                        .stdin(std::process::Stdio::piped())
+                        .stdout(std::process::Stdio::piped())
+                        .spawn()
+                    {
+                        if let Some(mut stdin) = process.stdin.take() {
+                            use std::io::Write;
+                            let _ = stdin.write_all(cert_pem.as_bytes());
+                        }
+
+                        if let Ok(output) = process.wait_with_output() {
+                            println!("{}", String::from_utf8_lossy(&output.stdout));
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Error parsing certificate: {}", e);
+                }
+            }
         }
     }
 }
