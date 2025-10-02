@@ -1,6 +1,6 @@
 # Aspectmin Tools
 
-A collection of 18 fast, simple CLI tools for macOS that solve common frustrations with built-in utilities.
+A collection of 19 fast, simple CLI tools for macOS that solve common frustrations with built-in utilities.
 
 Built in Rust for speed and reliability. Each tool does one thing well.
 
@@ -56,6 +56,12 @@ export PATH="$HOME/bin/aspectmin:$PATH"
   ```
 
 ### File System
+- **diskfree** - Show real disk space (excluding system volumes)
+  ```bash
+  diskfree
+  diskfree --json
+  ```
+
 - **bigdirs** - Top 10 largest directories from current path
   ```bash
   bigdirs
